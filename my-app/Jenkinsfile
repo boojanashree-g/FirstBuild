@@ -1,13 +1,8 @@
 pipeline {
     agent any
 
-    // tools {
-    //     nodejs 'NodeJS-18'
-    // }
-
-    environment {
-        NODEJS_HOME = tool 'NodeJS-18'  
-        PATH = "${NODEJS_HOME}/bin:${env.PATH}"
+    tools {
+        nodejs 'NodeJS-18' 
     }
 
     stages {
@@ -15,7 +10,7 @@ pipeline {
         stage('Setup Node.js') {
             steps {
                 script {
-                    def nodeHome = tool name: 'NodeJS', type: 'nodejs'
+                    def nodeHome = tool name: 'NodeJS-18', type: 'nodejs'
                     env.PATH = "${nodeHome}/bin:${env.PATH}"
                 }
                 sh 'node -v'
@@ -25,31 +20,13 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                echo 'Installing dependencies...'
-            }
-        }
-
-        stage('Run Linting') {
-            steps {
-                echo 'Running linting...'
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                echo 'Running tests...'
-            }
-        }
-
-        stage('Build') {
-            steps {
-                echo 'Building the project...'
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                echo 'Deploying the application...'
+                script {
+                    if (fileExists('package.json')) {
+                        sh 'npm install'
+                    } else {
+                        error("package.json not found, aborting build.")
+                    }
+                }
             }
         }
     }
