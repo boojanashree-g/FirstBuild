@@ -1,17 +1,23 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs 'NodeJS-18'
+    // tools {
+    //     nodejs 'NodeJS-18'
+    // }
+
+    environment {
+        NODEJS_HOME = tool 'NodeJS'  
+        PATH = "${NODEJS_HOME}/bin:${env.PATH}"
     }
 
     stages {
 
         stage('Setup Node.js') {
             steps {
-                echo 'Using Node.js from Jenkins Plugin'
-                sh 'nvm install 18'
-                sh 'nvm use 18'
+                script {
+                    def nodeHome = tool name: 'NodeJS', type: 'nodejs'
+                    env.PATH = "${nodeHome}/bin:${env.PATH}"
+                }
                 sh 'node -v'
                 sh 'npm -v'
             }
