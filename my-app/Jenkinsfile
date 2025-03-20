@@ -6,6 +6,14 @@ pipeline {
     }
 
     stages {
+        stage('Checkout Code') {
+            steps {
+                echo 'Checking out source code...'
+                cleanWs()  // Cleans workspace before fetching new code
+                git branch: 'main', url: 'https://github.com/boojanashree-g/FirstBuild.git'
+            }
+        }
+
         stage('Setup Node.js') {
             steps {
                 echo 'Using Node.js from Jenkins Plugin'
@@ -16,7 +24,14 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                script {
+                    if (fileExists('package.json')) {
+                        echo 'Installing dependencies...'
+                        sh 'npm ci'  // Faster and ensures clean install
+                    } else {
+                        error 'package.json not found! Aborting build.'
+                    }
+                }
             }
         }
 
@@ -41,11 +56,15 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deployment step here'
+                // Add deployment commands if needed
             }
         }
     }
 
     post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
         failure {
             echo 'Pipeline failed. Check logs for errors.'
         }
