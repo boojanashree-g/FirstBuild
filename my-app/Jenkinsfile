@@ -1,16 +1,25 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs 'NodeJS-18' 
+    environment {
+        NODEJS_HOME = tool 'NodeJS-18'  
+        PATH = "${NODEJS_HOME}/bin:${env.PATH}"
     }
 
     stages {
 
+        stage('Checkout Code') {
+            steps {
+                cleanWs()  // Clean workspace before cloning
+                checkout scm  // Checkout from Git
+                sh 'ls -lah'  // List files to confirm checkout
+            }
+        }
+
         stage('Setup Node.js') {
             steps {
                 script {
-                    def nodeHome = tool name: 'NodeJS-18', type: 'nodejs'
+                    def nodeHome = tool name: 'NodeJS', type: 'nodejs'
                     env.PATH = "${nodeHome}/bin:${env.PATH}"
                 }
                 sh 'node -v'
@@ -21,12 +30,47 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    if (fileExists('package.json')) {
-                        sh 'npm install'
+                    def projectDir = 'my-app'  // Change this to your project directory
+                    sh 'ls -lah'  // List files before proceeding
+                    if (fileExists("${projectDir}/package.json")) {
+                        dir(projectDir) {
+                            sh 'npm install'
+                        }
                     } else {
-                        error("package.json not found, aborting build.")
+                        error("package.json not found in ${projectDir}, aborting build.")
                     }
                 }
+            }
+        }
+
+        stage('Run Linting') {
+            steps {
+                dir('my-app') { 
+                    sh 'npm run lint'
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                dir('my-app') { 
+                    sh 'npm test'
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir('my-app') { 
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo 'Deploying the application...'
+                // Add deployment commands here
             }
         }
     }
