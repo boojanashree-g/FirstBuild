@@ -64,7 +64,6 @@ pipeline {
             steps {
                 script {
                     echo 'Deploying the application...'
-                    // Add your deployment script or commands here
                     sh 'echo Deployment process goes here'
                 }
             }
