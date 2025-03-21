@@ -53,40 +53,11 @@ pipeline {
                     // Install with forced rebuild of native addons
                     sh 'npm install --no-optional --force'
                     
-                    // Explicitly install tailwindcss to ensure proper installation
-                    sh 'npm install tailwindcss@latest postcss autoprefixer --force'
                 }
             }
         }
 
-        stage('Fix Tailwind Oxide') {
-            steps {
-                dir('my-app') {
-                    script {
-                        // Create a simple Next.js config that disables Tailwind Oxide (JIT compiler)
-                        writeFile file: 'next.config.temp.js', text: '''
-module.exports = {
-  experimental: {
-    // Disable the Rust-based JIT compiler for Tailwind CSS
-    turbo: {
-      rules: {
-        // Force the usage of the JavaScript version
-        "*.css": ["@tailwindcss/postcss/dist", { type: "module" }]
-      }
-    }
-  },
-  // Preserve any existing configurations by spreading them here
-  ...require('./next.config.js')
-};
-'''
-                        // Backup original config and replace with our temporary one
-                        sh '[ -f next.config.js ] && cp next.config.js next.config.js.bak || touch next.config.js.bak'
-                        sh 'cp next.config.temp.js next.config.js'
-                    }
-                }
-            }
-        }
-
+        
         stage('Run Linting') {
             steps {
                 dir('my-app') { 
