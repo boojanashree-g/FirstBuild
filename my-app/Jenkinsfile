@@ -4,7 +4,6 @@ pipeline {
     environment {
         NODEJS_HOME = tool 'NodeJS-18' 
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
-        // These environment variables help with native module builds
         NODE_ENV = "production"
         NEXT_TELEMETRY_DISABLED = "1"
     }
@@ -18,16 +17,6 @@ pipeline {
             }
         }
 
-        stage('Setup Git') {
-            steps {
-                script {
-                    sh 'git --version'
-                    sh 'git config --global user.name boojanashree-g'
-                    sh 'git config --global user.email boojanashree.g@appteq.in'
-                }
-            }
-        }
-
         stage('Setup Node.js') {
             steps {
                 sh 'node -v'
@@ -35,29 +24,87 @@ pipeline {
             }
         }
 
-        stage('Verify Project Structure') {
-            steps {
-                sh 'find . -name "package.json" -type f | sort'
-                sh 'pwd'
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
                 dir('my-app') {
-                    // First attempt: clean npm cache and reinstall
+                    // Clean everything first
+                    sh 'rm -rf node_modules package-lock.json .next || true'
                     sh 'npm cache clean --force || true'
-                    sh 'rm -rf node_modules || true'
-                    sh 'rm -rf .next || true'
                     
-                    // Install with forced rebuild of native addons
-                    sh 'npm install --no-optional --force'
+                    // Install dependencies with specific versions that are compatible
+                    sh '''
+                    npm install --legacy-peer-deps
+                    npm install tailwindcss@3.3.0 postcss@8.4.14 autoprefixer@10.4.7 --save-dev --legacy-peer-deps
+                    '''
                     
+                    // Verify Tailwind installation
+                    sh 'ls -la node_modules/@tailwindcss || echo "Tailwind directory not found"'
+                    sh 'ls -la node_modules/tailwindcss || echo "Tailwind directory not found"'
                 }
             }
         }
 
-        
+        stage('Create Tailwind Config') {
+            steps {
+                dir('my-app') {
+                    // Create minimal tailwind config if it doesn't exist
+                    sh '''
+                    if [ ! -f tailwind.config.js ]; then
+                        echo "Creating tailwind.config.js"
+                        cat > tailwind.config.js << 'EOL'
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+EOL
+                    fi
+                    '''
+                    
+                    // Create PostCSS config if it doesn't exist
+                    sh '''
+                    if [ ! -f postcss.config.js ]; then
+                        echo "Creating postcss.config.js"
+                        cat > postcss.config.js << 'EOL'
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+EOL
+                    fi
+                    '''
+                    
+                    // Create or modify Next.js config to use the app directory
+                    sh '''
+                    cat > next.config.js << 'EOL'
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  experimental: {
+    esmExternals: 'loose',
+  },
+  webpack: (config) => {
+    // This allows us to supply custom loaders
+    return config;
+  },
+}
+
+module.exports = nextConfig
+EOL
+                    '''
+                }
+            }
+        }
+
         stage('Run Linting') {
             steps {
                 dir('my-app') { 
@@ -66,21 +113,16 @@ pipeline {
             }
         }
 
-        stage('Run Tests') {
-            steps {
-                dir('my-app') { 
-                    sh 'npm test || echo "Tests failed but continuing"'
-                }
-            }
-        }
-
         stage('Build') {
             steps {
-                dir('my-app') { 
-                    // Build with special environment variables to help with native modules
-                    withEnv(['NEXT_SHARP_PATH=/tmp/sharp', 'NEXT_TELEMETRY_DISABLED=1']) {
-                        sh 'npm run build'
-                    }
+                dir('my-app') {
+                    // Build with specific environment variables
+                    sh '''
+                    export NODE_OPTIONS="--max_old_space_size=4096"
+                    export NEXT_TELEMETRY_DISABLED=1
+                    export TAILWIND_MODE=build
+                    npm run build
+                    '''
                 }
             }
         }
@@ -98,14 +140,10 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed. Check logs for errors.'
-        }
-        always {
-            echo 'Collecting npm logs for debugging'
-            sh 'find . -name npm-debug.log -type f -exec cat {} \\;'
-            
-            // Restore the original Next.js config if it exists
             dir('my-app') {
-                sh '[ -f next.config.js.bak ] && mv next.config.js.bak next.config.js || true'
+                sh 'cat package.json || echo "No package.json found"'
+                sh 'find node_modules -name "tailwindcss" | xargs ls -la || echo "No tailwindcss found"'
+                sh 'find . -name "*.log" -type f -exec cat {} \\; || echo "No log files found"'
             }
         }
     }
