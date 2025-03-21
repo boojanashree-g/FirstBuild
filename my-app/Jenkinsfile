@@ -113,9 +113,5 @@ pipeline {
         failure {
             echo 'Pipeline failed. Check logs for errors.'
         }
-        always {
-            echo 'Collecting npm logs'
-            sh 'find . -name npm-install.log -type f -exec cat {} \\;'
-        }
     }
 }
