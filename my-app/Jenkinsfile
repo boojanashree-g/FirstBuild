@@ -2,16 +2,26 @@ pipeline {
     agent any
 
     environment {
-        NODEJS_HOME = tool 'NodeJS-18' 
+        NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                cleanWs()  
-                checkout scm 
-                sh 'ls -lah' 
+                cleanWs()
+                checkout scm
+                sh 'ls -lah'
+            }
+        }
+
+        stage('Setup Git') {
+            steps {
+                script {
+                    sh 'git --version || echo "Git is not installed!"'
+                    sh 'git config --global user.name "jenkins"'
+                    sh 'git config --global user.email "jenkins@example.com"'
+                }
             }
         }
 
@@ -29,26 +39,58 @@ pipeline {
             }
         }
 
+        stage('Install System Dependencies') {
+            steps {
+                script {
+                    def os = sh(script: "uname", returnStdout: true).trim()
+                    if (os == 'Linux') {
+                        sh 'sudo apt-get update && sudo apt-get install -y build-essential libvips'
+                    } else if (os == 'Darwin') {
+                        sh 'brew install vips'
+                    }
+                }
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
                 script {
                     def projectDir = 'my-app'
 
+                    // Set NPM cache
+                    sh 'npm config set cache /var/jenkins_home/.npm --global'
                     sh 'npm cache clean --force'
 
                     if (fileExists("package.json")) {
                         echo "Installing dependencies in root"
-                        sh 'rm -rf node_modules package-lock.json'
-                        sh 'npm install --verbose > npm-install.log 2>&1 || cat npm-install.log'
-                    } 
-                    else if (fileExists("${projectDir}/package.json")) {
+                        sh '''
+                        rm -rf node_modules package-lock.json
+                        npm install --prefer-offline --no-audit --legacy-peer-deps
+                        '''
+                    } else if (fileExists("${projectDir}/package.json")) {
                         echo "Installing dependencies in ${projectDir}"
                         dir(projectDir) {
-                            sh 'rm -rf node_modules package-lock.json'
-                            sh 'npm install --verbose --legacy-peer-deps > npm-install.log 2>&1 || cat npm-install.log'
+                            sh '''
+                            rm -rf node_modules package-lock.json
+                            npm install --prefer-offline --no-audit --legacy-peer-deps
+                            '''
                         }
                     } else {
                         error("package.json not found, aborting.")
+                    }
+                }
+            }
+        }
+
+        stage('Fix Sharp and Other Dependencies') {
+            steps {
+                script {
+                    if (fileExists('my-app/package.json')) {
+                        dir('my-app') {
+                            sh 'npm rebuild sharp --ignore-scripts || echo "Sharp rebuild failed but continuing"'
+                        }
+                    } else {
+                        sh 'npm rebuild sharp --ignore-scripts || echo "Sharp rebuild failed but continuing"'
                     }
                 }
             }
@@ -59,11 +101,11 @@ pipeline {
             steps {
                 script {
                     if (fileExists('my-app/package.json')) {
-                        dir('my-app') { 
-                            sh 'npm run lint || echo "Linting failed"'
+                        dir('my-app') {
+                            sh 'npm run lint || echo "Linting failed but continuing"'
                         }
                     } else {
-                        sh 'npm run lint || echo "Linting failed"'
+                        sh 'npm run lint || echo "Linting failed but continuing"'
                     }
                 }
             }
@@ -74,11 +116,11 @@ pipeline {
             steps {
                 script {
                     if (fileExists('my-app/package.json')) {
-                        dir('my-app') { 
-                            sh 'npm test || echo "Tests failed"'
+                        dir('my-app') {
+                            sh 'npm test || echo "Tests failed but continuing"'
                         }
                     } else {
-                        sh 'npm test || echo "Tests failed"'
+                        sh 'npm test || echo "Tests failed but continuing"'
                     }
                 }
             }
@@ -89,11 +131,11 @@ pipeline {
             steps {
                 script {
                     if (fileExists('my-app/package.json')) {
-                        dir('my-app') { 
-                            sh 'npm run build || echo "Build failed"'
+                        dir('my-app') {
+                            sh 'npm run build || echo "Build failed but continuing"'
                         }
                     } else {
-                        sh 'npm run build || echo "Build failed"'
+                        sh 'npm run build || echo "Build failed but continuing"'
                     }
                 }
             }
@@ -114,8 +156,8 @@ pipeline {
             echo 'Pipeline failed. Check logs for errors.'
         }
         always {
-            echo 'Collecting npm logs'
-            sh 'find . -name npm-install.log -type f -exec cat {} \\;'
+            echo 'Collecting npm logs for debugging'
+            sh 'find . -name npm-debug.log -type f -exec cat {} \\;'
         }
     }
 }
