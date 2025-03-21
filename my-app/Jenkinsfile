@@ -2,16 +2,16 @@ pipeline {
     agent any
 
     environment {
-        NODEJS_HOME = tool 'NodeJS-18' 
+        NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                cleanWs()  
-                checkout scm 
-                sh 'ls -lah' 
+                cleanWs()
+                checkout scm
+                sh 'ls -lah'
             }
         }
 
@@ -38,32 +38,21 @@ pipeline {
 
                     if (fileExists("package.json")) {
                         echo "Installing dependencies in root"
-                        sh 'rm -rf node_modules package-lock.json'
-                        sh 'npm install --verbose > npm-install.log 2>&1 || cat npm-install.log'
+                        sh '''
+                        rm -rf node_modules package-lock.json
+                        npm install --verbose > npm-install.log 2>&1 || cat npm-install.log
+                        '''
                     } 
                     else if (fileExists("${projectDir}/package.json")) {
                         echo "Installing dependencies in ${projectDir}"
                         dir(projectDir) {
-                            sh 'rm -rf node_modules package-lock.json'
-                            sh 'npm install --verbose --legacy-peer-deps > npm-install.log 2>&1 || cat npm-install.log'
+                            sh '''
+                            rm -rf node_modules package-lock.json
+                            npm install
+                            '''
                         }
                     } else {
                         error("package.json not found, aborting.")
-                    }
-                }
-            }
-        }
-
-        stage('Run Linting') {
-            when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
-            steps {
-                script {
-                    if (fileExists('my-app/package.json')) {
-                        dir('my-app') { 
-                            sh 'npm run lint || echo "Linting failed"'
-                        }
-                    } else {
-                        sh 'npm run lint || echo "Linting failed"'
                     }
                 }
             }
@@ -101,7 +90,21 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                echo 'Deploying the application...'
+                script {
+                    echo 'Starting application...'
+                    sh '''
+                    nohup npm start > app.log 2>&1 &
+                    sleep 5
+                    curl -Is http://localhost:3000 || echo "App is not responding"
+                    '''
+
+                    echo 'Starting ngrok for public access...'
+                    sh '''
+                    nohup ngrok http 3000 --region=in --hostname=27a1-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
+                    sleep 5
+                    curl -Is https://27a1-115-245-95-234.ngrok-free.app || echo "Ngrok is not responding"
+                    '''
+                }
             }
         }
     }
@@ -112,6 +115,12 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed. Check logs for errors.'
+        }
+        always {
+            echo 'Collecting logs for debugging...'
+            sh 'cat npm-install.log || echo "No npm-install.log found"'
+            sh 'cat app.log || echo "No app.log found"'
+            sh 'cat ngrok.log || echo "No ngrok.log found"'
         }
     }
 }
