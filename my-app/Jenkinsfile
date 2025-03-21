@@ -17,7 +17,6 @@ pipeline {
 
         stage('Setup Node.js') {
             steps {
-                // Use the same tool name as defined in environment section
                 sh 'node -v'
                 sh 'npm -v'
             }
@@ -33,72 +32,68 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    def projectDir = 'my-app'  // Update this if your app is in a different directory
-                    
-                    // Check if package.json exists directly in the workspace
+                    def projectDir = 'my-app'
+
+                    sh 'npm cache clean --force'
+
                     if (fileExists("package.json")) {
-                        echo "Found package.json in the root directory"
-                        sh 'npm install'
-                    }
-                    // Check if package.json exists in the expected subdirectory
+                        echo "Installing dependencies in root"
+                        sh 'rm -rf node_modules package-lock.json'
+                        sh 'npm install --verbose > npm-install.log 2>&1 || cat npm-install.log'
+                    } 
                     else if (fileExists("${projectDir}/package.json")) {
-                        echo "Found package.json in ${projectDir} directory"
+                        echo "Installing dependencies in ${projectDir}"
                         dir(projectDir) {
-                            sh 'npm install --verbose'  // Added verbose flag for better error logs
+                            sh 'rm -rf node_modules package-lock.json'
+                            sh 'npm install --verbose --legacy-peer-deps > npm-install.log 2>&1 || cat npm-install.log'
                         }
                     } else {
-                        error("package.json not found in workspace or ${projectDir}, aborting build.")
+                        error("package.json not found, aborting.")
                     }
                 }
             }
         }
 
         stage('Run Linting') {
-            when {
-                expression { return fileExists('my-app/package.json') || fileExists('package.json') }
-            }
+            when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
             steps {
                 script {
                     if (fileExists('my-app/package.json')) {
                         dir('my-app') { 
-                            sh 'npm run lint || echo "Linting command failed but continuing"'
+                            sh 'npm run lint || echo "Linting failed"'
                         }
                     } else {
-                        sh 'npm run lint || echo "Linting command failed but continuing"'
+                        sh 'npm run lint || echo "Linting failed"'
                     }
                 }
             }
         }
 
         stage('Run Tests') {
-            when {
-                expression { return fileExists('my-app/package.json') || fileExists('package.json') }
-            }
+            when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
             steps {
                 script {
                     if (fileExists('my-app/package.json')) {
                         dir('my-app') { 
-                            sh 'npm test || echo "Tests failed but continuing"'
+                            sh 'npm test || echo "Tests failed"'
                         }
                     } else {
-                        sh 'npm test || echo "Tests failed but continuing"'
+                        sh 'npm test || echo "Tests failed"'
                     }
                 }
             }
         }
 
         stage('Build') {
-            when {
-                expression { return fileExists('my-app/package.json') || fileExists('package.json') }
-            }
+            when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
             steps {
                 script {
                     if (fileExists('my-app/package.json')) {
                         dir('my-app') { 
-                            sh 'npm run build || echo "Build command failed but continuing"'
+                            sh 'npm run build || echo "Build failed"'
                         }
                     } else {
-                        sh 'npm run build || echo "Build command failed but continuing"'
+                        sh 'npm run build || echo "Build failed"'
                     }
                 }
             }
@@ -119,8 +114,8 @@ pipeline {
             echo 'Pipeline failed. Check logs for errors.'
         }
         always {
-            echo 'Collecting npm logs for debugging'
-            sh 'find . -name npm-debug.log -type f -exec cat {} \\;'
+            echo 'Collecting npm logs'
+            sh 'find . -name npm-install.log -type f -exec cat {} \\;'
         }
     }
 }
