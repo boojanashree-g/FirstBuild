@@ -4,6 +4,9 @@ pipeline {
     environment {
         NODEJS_HOME = tool 'NodeJS-18' 
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
+        // These environment variables help with native module builds
+        NODE_ENV = "production"
+        NEXT_TELEMETRY_DISABLED = "1"
     }
 
     stages {
@@ -39,15 +42,46 @@ pipeline {
             }
         }
 
-        // Remove the problematic sudo-based system dependencies stage
-        // If you need specific system dependencies, consider using a custom Docker image
-
         stage('Install Dependencies') {
             steps {
                 dir('my-app') {
-                    // Add environment variables that might be needed for npm
-                    withEnv(['npm_config_cache=npm-cache', 'HOME=/tmp/jenkins-home']) {
-                        sh 'npm install --no-optional || npm install --no-optional --legacy-peer-deps'
+                    // First attempt: clean npm cache and reinstall
+                    sh 'npm cache clean --force || true'
+                    sh 'rm -rf node_modules || true'
+                    sh 'rm -rf .next || true'
+                    
+                    // Install with forced rebuild of native addons
+                    sh 'npm install --no-optional --force'
+                    
+                    // Explicitly install tailwindcss to ensure proper installation
+                    sh 'npm install tailwindcss@latest postcss autoprefixer --force'
+                }
+            }
+        }
+
+        stage('Fix Tailwind Oxide') {
+            steps {
+                dir('my-app') {
+                    script {
+                        // Create a simple Next.js config that disables Tailwind Oxide (JIT compiler)
+                        writeFile file: 'next.config.temp.js', text: '''
+module.exports = {
+  experimental: {
+    // Disable the Rust-based JIT compiler for Tailwind CSS
+    turbo: {
+      rules: {
+        // Force the usage of the JavaScript version
+        "*.css": ["@tailwindcss/postcss/dist", { type: "module" }]
+      }
+    }
+  },
+  // Preserve any existing configurations by spreading them here
+  ...require('./next.config.js')
+};
+'''
+                        // Backup original config and replace with our temporary one
+                        sh '[ -f next.config.js ] && cp next.config.js next.config.js.bak || touch next.config.js.bak'
+                        sh 'cp next.config.temp.js next.config.js'
                     }
                 }
             }
@@ -72,7 +106,10 @@ pipeline {
         stage('Build') {
             steps {
                 dir('my-app') { 
-                    sh 'npm run build'
+                    // Build with special environment variables to help with native modules
+                    withEnv(['NEXT_SHARP_PATH=/tmp/sharp', 'NEXT_TELEMETRY_DISABLED=1']) {
+                        sh 'npm run build'
+                    }
                 }
             }
         }
@@ -94,6 +131,11 @@ pipeline {
         always {
             echo 'Collecting npm logs for debugging'
             sh 'find . -name npm-debug.log -type f -exec cat {} \\;'
+            
+            // Restore the original Next.js config if it exists
+            dir('my-app') {
+                sh '[ -f next.config.js.bak ] && mv next.config.js.bak next.config.js || true'
+            }
         }
     }
 }
