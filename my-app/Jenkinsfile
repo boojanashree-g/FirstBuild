@@ -5,7 +5,11 @@ pipeline {
         NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
     }
-
+    stage('Cleanup') {
+        steps {
+            sh 'rm -f babel.config.js'
+        }
+    }
     stages {
         stage('Install Dependencies') {
             steps {
