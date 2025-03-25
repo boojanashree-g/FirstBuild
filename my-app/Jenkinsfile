@@ -18,7 +18,7 @@ pipeline {
                         echo "Installing dependencies in root"
                         sh '''
                         rm -rf node_modules package-lock.json
-                        npm install --verbose > npm-install.log 2>&1 || cat npm-install.log
+                        npm install 
                         '''
                     } 
                     else if (fileExists("${projectDir}/package.json")) {
@@ -80,7 +80,7 @@ pipeline {
                     sh '''
                     nohup ngrok http 3000 --region=in --hostname=27a1-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
                     sleep 5
-                    curl -Is https://72b7-115-245-95-234.ngrok-free.app || echo "Ngrok is not responding"
+                    curl -Is  https://291e-115-245-95-234.ngrok-free.app || echo "Ngrok is not responding"
                     '''
                 }
             }
