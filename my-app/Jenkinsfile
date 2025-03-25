@@ -7,28 +7,6 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Code') {
-            steps {
-                cleanWs()
-                checkout scm
-                sh 'ls -lah'
-            }
-        }
-
-        stage('Setup Node.js') {
-            steps {
-                sh 'node -v'
-                sh 'npm -v'
-            }
-        }
-
-        stage('Verify Project Structure') {
-            steps {
-                sh 'find . -name "package.json" -type f | sort'
-                sh 'pwd'
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
                 script {
@@ -102,7 +80,7 @@ pipeline {
                     sh '''
                     nohup ngrok http 3000 --region=in --hostname=27a1-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
                     sleep 5
-                    curl -Is https://27a1-115-245-95-234.ngrok-free.app || echo "Ngrok is not responding"
+                    curl -Is https://72b7-115-245-95-234.ngrok-free.app || echo "Ngrok is not responding"
                     '''
                 }
             }
@@ -115,12 +93,6 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed. Check logs for errors.'
-        }
-        always {
-            echo 'Collecting logs for debugging...'
-            sh 'cat npm-install.log || echo "No npm-install.log found"'
-            sh 'cat app.log || echo "No app.log found"'
-            sh 'cat ngrok.log || echo "No ngrok.log found"'
         }
     }
 }
