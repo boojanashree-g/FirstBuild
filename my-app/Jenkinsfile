@@ -5,16 +5,7 @@ pipeline {
         NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
     }
-    stage('Cleanup') {
-            steps {
-                script {
-                    // Remove Babel config if it exists
-                    sh 'rm -f babel.config.js'
-                    // Clear Next.js cache and node_modules
-                    sh 'rm -rf .next node_modules package-lock.json'
-                }
-            }
-        }
+
     stages {
         stage('Install Dependencies') {
             steps {
