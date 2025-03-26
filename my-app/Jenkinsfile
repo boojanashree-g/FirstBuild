@@ -1,6 +1,5 @@
 pipeline {
     agent any
-
     environment {
         NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
@@ -10,16 +9,14 @@ pipeline {
             steps {
                 script {
                     def projectDir = 'my-app'
-
                     sh 'npm cache clean --force'
-
                     if (fileExists("package.json")) {
                         echo "Installing dependencies in root"
                         sh '''
                         rm -rf node_modules package-lock.json
-                        npm install 
+                        npm install
                         '''
-                    } 
+                    }
                     else if (fileExists("${projectDir}/package.json")) {
                         echo "Installing dependencies in ${projectDir}"
                         dir(projectDir) {
@@ -34,13 +31,12 @@ pipeline {
                 }
             }
         }
-
         stage('Run Tests') {
             when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
             steps {
                 script {
                     if (fileExists('my-app/package.json')) {
-                        dir('my-app') { 
+                        dir('my-app') {
                             sh 'npm test || echo "Tests failed"'
                         }
                     } else {
@@ -49,13 +45,12 @@ pipeline {
                 }
             }
         }
-
         stage('Build') {
             when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
             steps {
                 script {
                     if (fileExists('my-app/package.json')) {
-                        dir('my-app') { 
+                        dir('my-app') {
                             sh 'npm run build || echo "Build failed"'
                         }
                     } else {
@@ -64,7 +59,6 @@ pipeline {
                 }
             }
         }
-
         stage('Deploy') {
             steps {
                 script {
@@ -74,7 +68,6 @@ pipeline {
                     sleep 5
                     curl -Is http://localhost:3000 || echo "App is not responding"
                     '''
-
                     echo 'Starting ngrok for public access...'
                     sh '''
                     nohup ngrok http 3000 --region=in --hostname=27a1-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
@@ -85,7 +78,6 @@ pipeline {
             }
         }
     }
-
     post {
         success {
             echo 'Pipeline completed successfully!'
