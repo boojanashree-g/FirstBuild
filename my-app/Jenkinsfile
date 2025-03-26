@@ -52,13 +52,16 @@ pipeline {
                     if (fileExists('my-app/package.json')) {
                         dir('my-app') {
                             sh 'npm run build || echo "Build failed"'
+                            echo "Build is successfully completed"
                         }
                     } else {
                         sh 'npm run build || echo "Build failed"'
+                        echo "Build is successfully completed"
                     }
                 }
             }
         }
+
         stage('Deploy') {
             steps {
                 script {
@@ -72,7 +75,7 @@ pipeline {
                     sh '''
                     nohup ngrok http 3000 --region=in --hostname=27a1-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
                     sleep 5
-                    curl -Is  https://56a8-106-51-157-202.ngrok-free.app || echo "Ngrok is not responding"
+                    curl -Is  https://d797-106-51-157-202.ngrok-free.app || echo "Ngrok is not responding"
                     '''
                 }
             }
