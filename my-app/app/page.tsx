@@ -37,7 +37,7 @@ export default function Home() {
       <div className="feature">
         <i className="fas fa-podcast"></i> 
         <h3>AI Podcast</h3>
-        <p>ShareLook allows you to do Live Broadcasting, Live Assessment, Live</p>
+        <p>ShareLook allows you too do Live Broadcasting, Live Assessment, Live</p>
       </div>
       <div className="feature">
         <i className="fas fa-user"></i> 
