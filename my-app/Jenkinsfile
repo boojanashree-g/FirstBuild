@@ -5,57 +5,121 @@ pipeline {
         NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
     }
+
     stages {
+        stage('Prepare Environment') {
+            steps {
+                script {
+                    // Ensure clean workspace
+                    sh 'pwd'
+                    sh 'ls -la'
+                }
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
                 script {
                     def projectDir = 'my-app'
 
+                    // Clean npm cache and remove existing node_modules
                     sh 'npm cache clean --force'
 
-                    if (fileExists("package.json")) {
-                        echo "Installing dependencies in root"
-                        sh '''
-                        rm -rf node_modules package-lock.json
-                        npm install 
-                        '''
-                    } 
-                    else if (fileExists("${projectDir}/package.json")) {
+                    if (fileExists("${projectDir}/package.json")) {
                         echo "Installing dependencies in ${projectDir}"
                         dir(projectDir) {
                             sh '''
                             rm -rf node_modules package-lock.json
-                            npm install
+                            npm install --verbose
                             '''
                         }
+                    } else if (fileExists("package.json")) {
+                        echo "Installing dependencies in root"
+                        sh '''
+                        rm -rf node_modules package-lock.json
+                        npm install --verbose
+                        '''
                     } else {
-                        error("package.json not found, aborting.")
+                        error("package.json not found in my-app or root directory. Aborting.")
+                    }
+                }
+            }
+        }
+
+        stage('Type Check') {
+            steps {
+                script {
+                    def projectDir = 'my-app'
+                    
+                    if (fileExists("${projectDir}/tsconfig.json")) {
+                        dir(projectDir) {
+                            sh 'npx tsc --noEmit'
+                        }
+                    } else if (fileExists("tsconfig.json")) {
+                        sh 'npx tsc --noEmit'
                     }
                 }
             }
         }
 
         stage('Run Tests') {
-            when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
             steps {
                 script {
-                    if (fileExists('my-app/package.json')) {
-                        dir('my-app') { 
-                            sh 'npm test || echo "Tests failed"'
+                    def projectDir = 'my-app'
+                    
+                    try {
+                        if (fileExists("${projectDir}/package.json")) {
+                            dir(projectDir) {
+                                // Generate test report
+                                sh '''
+                                npm run test:ci
+                                '''
+                            }
+                        } else {
+                            // Generate test report
+                            sh '''
+                            npm run test:ci
+                            '''
                         }
-                    } else {
-                        sh 'npm test || echo "Tests failed"'
+                    } catch (err) {
+                        // Ensure test failure doesn't immediately fail the pipeline
+                        echo "Tests failed: ${err}"
+                        // Optionally, you can choose to fail the pipeline here
+                        // currentBuild.result = 'UNSTABLE'
+                    }
+                }
+            }
+            post {
+                always {
+                    script {
+                        def projectDir = 'my-app'
+                        
+                        // Publish test reports
+                        if (fileExists("${projectDir}/coverage")) {
+                            publishHTML(target: [
+                                allowMissing: false,
+                                alwaysLinkToLastBuild: true,
+                                keepAll: true,
+                                reportDir: "${projectDir}/coverage",
+                                reportFiles: 'index.html',
+                                reportName: 'Coverage Report'
+                            ])
+                        }
+
+                        // Publish JUnit test results
+                        junit testResults: '**/junit.xml', allowEmptyResults: true
                     }
                 }
             }
         }
 
         stage('Build') {
-            when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
             steps {
                 script {
-                    if (fileExists('my-app/package.json')) {
-                        dir('my-app') { 
+                    def projectDir = 'my-app'
+                    
+                    if (fileExists("${projectDir}/package.json")) {
+                        dir(projectDir) {
                             sh 'npm run build || echo "Build failed"'
                         }
                     } else {
@@ -92,6 +156,14 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed. Check logs for errors.'
+            // Optional: Send notification
+            // emailext body: 'Check console output at $BUILD_URL to view the results.', 
+            //          subject: "Jenkins Build ${currentBuild.currentResult}: Job ${env.JOB_NAME}", 
+            //          to: 'your-email@example.com'
+        }
+        always {
+            // Clean up workspace
+            cleanWs()
         }
     }
 }

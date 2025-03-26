@@ -8,11 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --reporters=default --reporters=jest-junit"
   },
-  "jest": {
-    "testResultsProcessor": "jest-junit"
-  },
+  
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -43,5 +43,8 @@
     "ts-jest": "^29.3.0",
     "ts-node": "^10.9.2",
     "typescript": "^5"
-  }
+  },
+  "jest": {
+        "testEnvironment": "jsdom"
+    }
 }
