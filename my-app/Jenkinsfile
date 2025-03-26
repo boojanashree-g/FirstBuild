@@ -69,7 +69,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    echo 'Starting application...'
+                    echo 'starting application...'
                     sh '''
                     nohup npm start > app.log 2>&1 &
                     sleep 5
