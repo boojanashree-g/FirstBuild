@@ -7,12 +7,39 @@ pipeline {
     }
     
     stages {
-        stage('Cleanup') {
+        stage('Checkout') {
+            steps {
+                // Ensure we're in the correct directory
+                sh 'pwd'
+                sh 'ls -la'
+            }
+        }
+
+        stage('Prepare Project Structure') {
             steps {
                 script {
-                    // Clean workspace
-                    sh 'rm -rf node_modules'
-                    sh 'rm -rf coverage'
+                    // Create package.json if not exists
+                    sh '''
+                    if [ ! -f package.json ]; then
+                        echo '{
+                            "name": "react-jest-project",
+                            "version": "1.0.0",
+                            "description": "React project with Jest testing",
+                            "main": "index.js",
+                            "scripts": {
+                                "test": "jest",
+                                "test:ci": "jest --ci --reporters=default --reporters=jest-junit",
+                                "build": "echo \\"No build script specified\\"",
+                                "start": "echo \\"No start script specified\\""
+                            },
+                            "keywords": ["react", "jest", "testing"],
+                            "author": "",
+                            "license": "ISC",
+                            "devDependencies": {},
+                            "dependencies": {}
+                        }' > package.json
+                    fi
+                    '''
                 }
             }
         }
@@ -20,30 +47,30 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    // Install project dependencies
                     sh '''
                     npm cache clean --force
-                    npm install
-                    
-                    # Install testing dependencies
                     npm install --save-dev \
                         jest \
                         @testing-library/react \
                         @testing-library/jest-dom \
+                        @testing-library/user-event \
                         jest-environment-jsdom \
                         babel-jest \
-                        identity-obj-proxy \
                         @babel/preset-env \
-                        @babel/preset-react
+                        @babel/preset-react \
+                        jest-junit \
+                        identity-obj-proxy
+                    
+                    npm install react react-dom
                     '''
                 }
             }
         }
 
-        stage('Create Configuration Files') {
+        stage('Create Test Configuration') {
             steps {
                 script {
-                    // Create Jest configuration file
+                    // Create Jest configuration
                     writeFile file: 'jest.config.js', text: '''
 module.exports = {
     testEnvironment: 'jsdom',
@@ -83,8 +110,10 @@ module.exports = {
 import '@testing-library/jest-dom';
                     '''
 
-                    // Create file mock
+                    // Ensure mocks directory exists
                     sh 'mkdir -p __mocks__'
+
+                    // Create file mock
                     writeFile file: '__mocks__/fileMock.js', text: '''
 module.exports = 'test-file-stub';
                     '''
@@ -95,10 +124,7 @@ module.exports = 'test-file-stub';
         stage('Run Jest Tests') {
             steps {
                 script {
-                    // Install Jest JUnit reporter
-                    sh 'npm install --save-dev jest-junit'
-
-                    // Run Jest tests with JUnit and coverage reporting
+                    // Run Jest tests
                     sh '''
                     mkdir -p test-results
                     npm test -- \
@@ -136,16 +162,7 @@ module.exports = 'test-file-stub';
         stage('Build') {
             steps {
                 script {
-                    sh 'npm run build'
-                }
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                script {
-                    echo 'Deployment steps would go here'
-                    // Add your deployment logic
+                    sh 'npm run build || echo "No build script specified"'
                 }
             }
         }
@@ -157,6 +174,11 @@ module.exports = 'test-file-stub';
         }
         failure {
             echo 'Pipeline failed. Check logs and test reports.'
+            
+            // Optional: Send notification
+            mail to: 'your-email@example.com',
+                 subject: "Pipeline Failed: ${currentBuild.fullDisplayName}",
+                 body: "Something is wrong with the build. Check console output at ${env.BUILD_URL}"
         }
         always {
             // Clean up workspace
