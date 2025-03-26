@@ -4,64 +4,31 @@ pipeline {
     environment {
         NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
+        NODE_OPTIONS = "--max_old_space_size=4096" // Prevents out-of-memory issues
     }
     
     stages {
         stage('Checkout') {
             steps {
-                // Ensure we're in the correct directory
-                sh 'pwd'
-                sh 'ls -la'
+                echo "Checking out code..."
+                sh 'pwd && ls -la'
             }
         }
 
-        stage('Prepare Project Structure') {
+        stage('Verify Node & npm') {
             steps {
-                script {
-                    // Create package.json if not exists
-                    sh '''
-                    if [ ! -f package.json ]; then
-                        echo '{
-                            "name": "react-jest-project",
-                            "version": "1.0.0",
-                            "description": "React project with Jest testing",
-                            "main": "index.js",
-                            "scripts": {
-                                "test": "jest",
-                                "test:ci": "jest --ci --reporters=default --reporters=jest-junit",
-                                "build": "echo \\"No build script specified\\"",
-                                "start": "echo \\"No start script specified\\""
-                            },
-                            "keywords": ["react", "jest", "testing"],
-                            "author": "",
-                            "license": "ISC",
-                            "devDependencies": {},
-                            "dependencies": {}
-                        }' > package.json
-                    fi
-                    '''
-                }
+                sh 'node -v && npm -v'
             }
         }
 
         stage('Install Dependencies') {
             steps {
                 script {
+                    echo "Installing dependencies..."
                     sh '''
+                    set -e
                     npm cache clean --force
-                    npm install --save-dev \
-                        jest \
-                        @testing-library/react \
-                        @testing-library/jest-dom \
-                        @testing-library/user-event \
-                        jest-environment-jsdom \
-                        babel-jest \
-                        @babel/preset-env \
-                        @babel/preset-react \
-                        jest-junit \
-                        identity-obj-proxy
-                    
-                    npm install react react-dom
+                    npm install
                     '''
                 }
             }
@@ -70,17 +37,18 @@ pipeline {
         stage('Create Test Configuration') {
             steps {
                 script {
-                    // Create Jest configuration
+                    echo "Creating Jest and Babel configuration files..."
+                    
                     writeFile file: 'jest.config.js', text: '''
 module.exports = {
     testEnvironment: 'jsdom',
     setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
     moduleNameMapper: {
-        '\\\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-        '\\\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/fileMock.js'
+        '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+        '\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/fileMock.js'
     },
     transform: {
-        '^.+\\\\.(js|jsx|ts|tsx)$': 'babel-jest'
+        '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest'
     },
     collectCoverage: true,
     coverageDirectory: 'coverage',
@@ -95,7 +63,6 @@ module.exports = {
 };
                     '''
 
-                    // Create Babel configuration
                     writeFile file: '.babelrc', text: '''
 {
     "presets": [
@@ -105,15 +72,11 @@ module.exports = {
 }
                     '''
 
-                    // Create Jest setup file
                     writeFile file: 'jest.setup.js', text: '''
 import '@testing-library/jest-dom';
                     '''
 
-                    // Ensure mocks directory exists
                     sh 'mkdir -p __mocks__'
-
-                    // Create file mock
                     writeFile file: '__mocks__/fileMock.js', text: '''
 module.exports = 'test-file-stub';
                     '''
@@ -124,8 +87,9 @@ module.exports = 'test-file-stub';
         stage('Run Jest Tests') {
             steps {
                 script {
-                    // Run Jest tests
+                    echo "Running Jest tests..."
                     sh '''
+                    set -e
                     mkdir -p test-results
                     npm test -- \
                         --config=jest.config.js \
@@ -140,13 +104,12 @@ module.exports = 'test-file-stub';
             }
             post {
                 always {
-                    // Publish test results
+                    echo "Publishing test results..."
                     junit allowEmptyResults: true, testResults: 'test-results/junit.xml'
                     
-                    // Publish coverage reports
+                    echo "Publishing coverage reports..."
                     cobertura coberturaReportFile: 'coverage/cobertura-coverage.xml'
                     
-                    // Publish HTML coverage report
                     publishHTML(target: [
                         allowMissing: false,
                         alwaysLinkToLastBuild: true,
@@ -162,6 +125,7 @@ module.exports = 'test-file-stub';
         stage('Build') {
             steps {
                 script {
+                    echo "Running build step..."
                     sh 'npm run build || echo "No build script specified"'
                 }
             }
@@ -170,19 +134,17 @@ module.exports = 'test-file-stub';
 
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo '✅ Pipeline completed successfully!'
         }
         failure {
-            echo 'Pipeline failed. Check logs and test reports.'
-            
-            // Optional: Send notification
+            echo '❌ Pipeline failed. Check logs and test reports.'
             mail to: 'your-email@example.com',
                  subject: "Pipeline Failed: ${currentBuild.fullDisplayName}",
                  body: "Something is wrong with the build. Check console output at ${env.BUILD_URL}"
         }
         always {
-            // Clean up workspace
-            cleanWs()
+            echo "Cleaning up workspace (except source files)..."
+            sh 'rm -rf node_modules coverage test-results || true'
         }
     }
 }
