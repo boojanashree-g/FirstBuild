@@ -5,7 +5,6 @@ pipeline {
         NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
     }
-    
     stages {
         stage('Install Dependencies') {
             steps {
@@ -18,8 +17,7 @@ pipeline {
                         echo "Installing dependencies in root"
                         sh '''
                         rm -rf node_modules package-lock.json
-                        npm install
-                        npm install --save-dev jest
+                        npm install 
                         '''
                     } 
                     else if (fileExists("${projectDir}/package.json")) {
@@ -28,7 +26,6 @@ pipeline {
                             sh '''
                             rm -rf node_modules package-lock.json
                             npm install
-                            npm install --save-dev jest
                             '''
                         }
                     } else {
@@ -38,7 +35,7 @@ pipeline {
             }
         }
 
-        stage('Run Jest Tests') {
+         stage('Run Jest Tests') {
             when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
             steps {
                 script {
