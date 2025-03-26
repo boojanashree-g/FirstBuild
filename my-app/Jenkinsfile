@@ -5,6 +5,7 @@ pipeline {
         NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
     }
+    
     stages {
         stage('Install Dependencies') {
             steps {
@@ -17,7 +18,8 @@ pipeline {
                         echo "Installing dependencies in root"
                         sh '''
                         rm -rf node_modules package-lock.json
-                        npm install 
+                        npm install
+                        npm install --save-dev jest
                         '''
                     } 
                     else if (fileExists("${projectDir}/package.json")) {
@@ -26,6 +28,7 @@ pipeline {
                             sh '''
                             rm -rf node_modules package-lock.json
                             npm install
+                            npm install --save-dev jest
                             '''
                         }
                     } else {
@@ -35,17 +38,50 @@ pipeline {
             }
         }
 
-        stage('Run Tests') {
+        stage('Run Jest Tests') {
             when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
             steps {
                 script {
+                    // Ensure Jest is configured in package.json
                     if (fileExists('my-app/package.json')) {
                         dir('my-app') { 
-                            sh 'npm test || echo "Tests failed"'
+                            sh '''
+                            # Add Jest test script to package.json if not exists
+                            if ! grep -q '"test":.*jest' package.json; then
+                                sed -i 's/"scripts": {/"scripts": {\n    "test": "jest",/g' package.json
+                            fi
+                            
+                            # Run Jest tests with coverage and generate reports
+                            npm test -- --coverage --coverageReporters=text --coverageReporters=lcov
+                            '''
                         }
                     } else {
-                        sh 'npm test || echo "Tests failed"'
+                        sh '''
+                        # Add Jest test script to package.json if not exists
+                        if ! grep -q '"test":.*jest' package.json; then
+                            sed -i 's/"scripts": {/"scripts": {\n    "test": "jest",/g' package.json
+                        fi
+                        
+                        # Run Jest tests with coverage and generate reports
+                        npm test -- --coverage --coverageReporters=text --coverageReporters=lcov
+                        '''
                     }
+                }
+            }
+            post {
+                always {
+                    // Publish Jest test results
+                    junit allowEmptyResults: true, testResults: '**/junit.xml'
+                    
+                    // Publish coverage reports
+                    publishHTML(target: [
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
+                        reportDir: 'coverage',
+                        reportFiles: 'index.html',
+                        reportName: 'Jest Coverage Report'
+                    ])
                 }
             }
         }
