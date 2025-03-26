@@ -12,7 +12,7 @@ export default function Home() {
       <div className="feature">
         <i className="fas fa-video"></i> 
         <h3>Video Generate AI</h3>
-        <p>ShareLook allows you to do Live Broadcasting, Live Assessment, Live</p>
+        <p>ShareLook allows you to doo Live Broadcasting, Live Assessment, Live</p>
       </div>
       <div className="feature">
         <i className="fas fa-broadcast-tower"></i>
