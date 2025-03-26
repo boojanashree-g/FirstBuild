@@ -27,7 +27,7 @@ export default function Home() {
       <div className="feature">
         <i className="fas fa-poll"></i> 
         <h3>Quizzes</h3>
-        <p>ShareLook allows you to do Live Broadcasting, Live Assessment, Live</p>
+        <p>ShareLook allows you to do Live Broaddcasting, Live Assessment, Live</p>
       </div>
       <div className="feature">
         <i className="fas fa-cubes"></i> 
