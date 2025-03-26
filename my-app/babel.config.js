@@ -1,7 +1,5 @@
 module.exports = {
-    presets: [
-      '@babel/preset-env', 
-      ['@babel/preset-react', { runtime: 'automatic' }],
-      ["next/babel"]
-    ],
+    presets: ['next/babel'], // If using Next.js
+    plugins: ['@babel/plugin-transform-react-jsx']
   };
+  
