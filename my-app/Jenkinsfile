@@ -5,7 +5,6 @@ pipeline {
         NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
     }
-
     stages {
         stage('Install Dependencies') {
             steps {
@@ -18,7 +17,7 @@ pipeline {
                         echo "Installing dependencies in root"
                         sh '''
                         rm -rf node_modules package-lock.json
-                        npm install --verbose > npm-install.log 2>&1 || cat npm-install.log
+                        npm install 
                         '''
                     } 
                     else if (fileExists("${projectDir}/package.json")) {
@@ -69,18 +68,18 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    echo 'starting application...'
+                    echo 'Starting application...'
                     sh '''
                     nohup npm start > app.log 2>&1 &
                     sleep 5
-                    curl -Is http://localhost:3000 || echo "App is not respondingg"
+                    curl -Is http://localhost:3000 || echo "App is not responding"
                     '''
 
                     echo 'Starting ngrok for public access...'
                     sh '''
                     nohup ngrok http 3000 --region=in --hostname=27a1-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
                     sleep 5
-                    curl -Is https://d797-106-51-157-202.ngrok-free.app || echo "Ngrok is not responding"
+                    curl -Is  https://a899-115-245-95-234.ngrok-free.app || echo "Ngrok is not responding"
                     '''
                 }
             }
