@@ -73,7 +73,7 @@ pipeline {
                     sh '''
                     nohup npm start > app.log 2>&1 &
                     sleep 5
-                    curl -Is http://localhost:3000 || echo "App is not responding"
+                    curl -Is http://localhost:3000 || echo "App is not respondingg"
                     '''
 
                     echo 'Starting ngrok for public access...'
