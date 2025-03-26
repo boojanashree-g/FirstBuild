@@ -10,14 +10,14 @@ pipeline {
                 script {
                     def projectDir = 'my-app'
                     sh 'npm cache clean --force'
+                    
                     if (fileExists("package.json")) {
                         echo "Installing dependencies in root"
                         sh '''
                         rm -rf node_modules package-lock.json
                         npm install
                         '''
-                    }
-                    else if (fileExists("${projectDir}/package.json")) {
+                    } else if (fileExists("${projectDir}/package.json")) {
                         echo "Installing dependencies in ${projectDir}"
                         dir(projectDir) {
                             sh '''
@@ -31,6 +31,7 @@ pipeline {
                 }
             }
         }
+
         stage('Run Tests') {
             when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
             steps {
@@ -45,6 +46,7 @@ pipeline {
                 }
             }
         }
+
         stage('Build') {
             when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
             steps {
@@ -52,7 +54,7 @@ pipeline {
                     if (fileExists('my-app/package.json')) {
                         dir('my-app') {
                             sh 'npm run build || echo "Build failed"'
-                            echo "Build is successfully completed"
+                            echo " Build is successfully completed"
                         }
                     } else {
                         sh 'npm run build || echo "Build failed"'
@@ -65,39 +67,43 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    echo 'Starting application...'
+                    echo '🚀 Starting application...'
                     sh '''
                     nohup npm start > app.log 2>&1 &
                     sleep 5
-                    curl -Is http://localhost:3000 || echo "App is not responding"
+                    curl -Is http://localhost:3000 || echo "❌ App is not responding"
                     '''
 
-                    // Debugging
+                    // Debugging: Check if the app is running
                     sh 'ps aux | grep node'
                     sh 'tail -n 20 app.log'
 
-                    echo 'Starting ngrok for public access...'
+                    echo ' Starting ngrok for public access...'
                     sh '''
                     nohup ngrok http 3000 --region=in > ngrok.log 2>&1 &
                     sleep 5
-                    curl -Is http://127.0.0.1:4040/api/tunnels || echo "Ngrok is not responding"
+                    curl -Is http://127.0.0.1:4040/api/tunnels || echo "❌ Ngrok is not responding"
                     '''
 
-                    // Fetch the actual ngrok URL
+                    // Fetch the correct ngrok public URL
                     def ngrokUrl = sh(script: "curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url'", returnStdout: true).trim()
-                    echo "Ngrok is running at: ${ngrokUrl}"
+                    
+                    if (ngrokUrl) {
+                        echo "Ngrok is running at: ${ngrokUrl}"
+                    } else {
+                        echo " Failed to fetch ngrok public URL"
+                    }
                 }
             }
         }
+    }
 
     post {
         success {
-            echo 'Pipeline completed successfully!'
+            echo ' Pipeline completed successfully!'
         }
         failure {
-            echo 'Pipeline failed. Check logs for errors.'
+            echo ' Pipeline failed. Check logs for errors.'
         }
     }
 }
-}
-
