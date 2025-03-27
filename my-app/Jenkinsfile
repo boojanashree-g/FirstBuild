@@ -14,15 +14,16 @@ pipeline {
                         echo "Installing dependencies in root"
                         sh '''
                         rm -rf node_modules package-lock.json
-                        npm install
+                        npm config set registry http://registry.npmjs.org/
+                        npm install --no-optional --legacy-peer-deps --verbose
                         '''
-                    }
-                    else if (fileExists("${projectDir}/package.json")) {
+                    } else if (fileExists("${projectDir}/package.json")) {
                         echo "Installing dependencies in ${projectDir}"
                         dir(projectDir) {
                             sh '''
                             rm -rf node_modules package-lock.json
-                            npm install
+                            npm config set registry http://registry.npmjs.org/
+                            npm install --no-optional --legacy-peer-deps --verbose
                             '''
                         }
                     } else {
@@ -66,13 +67,13 @@ pipeline {
                     sh '''
                     nohup npm start > app.log 2>&1 &
                     sleep 5
-                    curl -Is http://localhost:3000 || echo "App is not responding"
+                    curl -Is http://127.0.0.1:3000 || echo "App is not responding"
                     '''
                     echo 'Starting ngrok for public access...'
                     sh '''
-                    nohup ngrok http 3000 --region=in --hostname=27a1-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
+                    nohup ngrok http http://127.0.0.1:3000 --region=in --hostname=27a1-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
                     sleep 5
-                    curl -Is  https://d27f-106-51-157-202.ngrok-free.app || echo "Ngrok is not responding"
+                    curl -Is https://d27f-106-51-157-202.ngrok-free.app || echo "Ngrok is not responding"
                     '''
                 }
             }
