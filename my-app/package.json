@@ -56,7 +56,7 @@
       "^.+\\.(ts|tsx|js|jsx)$": [
         "ts-jest",
         {
-          "useESM": true
+          "useESM": false
         }
       ]
     },
