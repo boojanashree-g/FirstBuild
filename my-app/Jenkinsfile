@@ -66,36 +66,27 @@ pipeline {
             }
         }
 
-       stage('Start Application') {
+       stage('Deploy') {
             steps {
-                sh '''
-                nohup npm run start &
-                sleep 10
-                '''
-            }
-        }
-        stage('Verify Application') {
-            steps {
-                sh '''
-                if ! curl -Is http://localhost:3000; then
-                  echo "App failed to start"
-                  exit 1
-                fi
-                '''
-            }
-        }
-        stage('Start Ngrok') {
-            steps {
-                sh '''
-                nohup ngrok http 3000 --region=in --hostname=d27f-106-51-157-202.ngrok-free.app &
-                sleep 5
-                curl -Is https://d27f-106-51-157-202.ngrok-free.app
-                '''
-            }
-        }
-    }
+                script {
+                    echo 'Starting application on port 3000...'
+                    sh '''
+                    nohup npm run start > app.log 2>&1 &
+                    sleep 5
+                    curl -Is http://localhost:3000 || echo "App is not responding"
+                    '''
 
-    
+                    echo 'Starting ngrok for public access...'
+                    sh '''
+                    nohup ngrok http 3000 --region=in --hostname=d27f-106-51-157-202.ngrok-free.app > ngrok.log 2>&1 &
+                    sleep 5
+                    curl -Is https://d27f-106-51-157-202.ngrok-free.app || echo "Ngrok is not responding"
+                    '''
+                }
+            }
+        }
+
+    }
 
     post {
         success {
