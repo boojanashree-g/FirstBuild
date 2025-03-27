@@ -20,8 +20,6 @@ pipeline {
                         rm -rf node_modules package-lock.json
                         npm install --verbose > npm-install.log 2>&1 || cat npm-install.log
                         '''
-                        sh'npm install --save-dev @testing-library/jest-dom'
-                        sh'npm install --save-dev ts-jest babel-jest @babel/preset-env @babel/preset-react @babel/preset-typescript'
                     } 
                     else if (fileExists("${projectDir}/package.json")) {
                         echo "Installing dependencies in ${projectDir}"
@@ -30,8 +28,6 @@ pipeline {
                             rm -rf node_modules package-lock.json
                             npm install
                             '''
-                            sh'npm install --save-dev @testing-library/jest-dom'
-                            sh'npm install --save-dev ts-jest babel-jest @babel/preset-env @babel/preset-react @babel/preset-typescript'
                         }
                     } else {
                         error("package.json not found, aborting.")
@@ -89,6 +85,7 @@ pipeline {
                 }
             }
         }
+
     }
 
     post {
