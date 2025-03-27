@@ -4,6 +4,7 @@ pipeline {
     environment {
         NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
+        NODE_OPTIONS = "--max-old-space-size=4096"
     }
 
     stages {
@@ -17,7 +18,7 @@ pipeline {
                     if (fileExists("package.json")) {
                         echo "Installing dependencies in root"
                         sh '''
-                        rm -rf node_modules package-lock.json
+                        rm -rf node_modules package-lock.json || true
                         npm install --verbose > npm-install.log 2>&1 || cat npm-install.log
                         '''
                     } 
@@ -25,7 +26,7 @@ pipeline {
                         echo "Installing dependencies in ${projectDir}"
                         dir(projectDir) {
                             sh '''
-                            rm -rf node_modules package-lock.json
+                            rm -rf node_modules package-lock.json || true
                             npm install
                             '''
                         }
@@ -42,10 +43,10 @@ pipeline {
                 script {
                     if (fileExists('my-app/package.json')) {
                         dir('my-app') { 
-                            sh 'npm test || echo "Tests failed"'
+                            sh 'npm test || exit 1'
                         }
                     } else {
-                        sh 'npm test || echo "Tests failed"'
+                        sh 'npm test || exit 1'
                     }
                 }
             }
@@ -57,10 +58,10 @@ pipeline {
                 script {
                     if (fileExists('my-app/package.json')) {
                         dir('my-app') { 
-                            sh 'npm run build || echo "Build failed"'
+                            sh 'npm run build || exit 1'
                         }
                     } else {
-                        sh 'npm run build || echo "Build failed"'
+                        sh 'npm run build || exit 1'
                     }
                 }
             }
@@ -72,21 +73,27 @@ pipeline {
                     echo 'Starting application on port 3000...'
                     sh '''
                     nohup npm run start > app.log 2>&1 &
-                    sleep 5
-                    curl -Is http://localhost:3000 || echo "App is not responding"
+                    echo $! > app.pid
+                    sleep 10
+                    if ! curl -Is http://localhost:3000; then
+                        echo "App failed to start!"
+                        exit 1
+                    fi
                     '''
 
                     echo 'Starting ngrok for public access...'
                     sh '''
                     nohup ngrok http 3000 --region=in --hostname=d27f-106-51-157-202.ngrok-free.app > ngrok.log 2>&1 &
-                    sleep 5
-                    curl -Is https://d27f-106-51-157-202.ngrok-free.app || echo "Ngrok is not responding"
+                    sleep 10
+                    if ! curl -Is https://d27f-106-51-157-202.ngrok-free.app; then
+                        echo "Ngrok is not responding"
+                        exit 1
+                    fi
                     '''
                 }
             }
         }
-
-    
+    }
 
     post {
         success {
