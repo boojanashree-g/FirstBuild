@@ -1,18 +1,3 @@
-import React from 'react';
-
-interface HomeProps {
-  // Add any props if needed
+export function sum(a: number, b: number): number {
+  return a + b;
 }
-
-const Home: React.FC<HomeProps> = () => {
-  return (
-    <div>
-      <h1>Our Features</h1>
-      <div data-testid="feature-section">
-        <p>Discover our amazing features!</p>
-      </div>
-    </div>
-  );
-};
-
-export default Home;
