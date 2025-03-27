@@ -14,16 +14,15 @@ pipeline {
                         echo "Installing dependencies in root"
                         sh '''
                         rm -rf node_modules package-lock.json
-                        npm config set registry http://registry.npmjs.org/
-                        npm install --no-optional --legacy-peer-deps --verbose
+                        npm install
                         '''
-                    } else if (fileExists("${projectDir}/package.json")) {
+                    }
+                    else if (fileExists("${projectDir}/package.json")) {
                         echo "Installing dependencies in ${projectDir}"
                         dir(projectDir) {
                             sh '''
                             rm -rf node_modules package-lock.json
-                            npm config set registry http://registry.npmjs.org/
-                            npm install --no-optional --legacy-peer-deps --verbose
+                            npm install
                             '''
                         }
                     } else {
