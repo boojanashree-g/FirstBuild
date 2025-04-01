@@ -4,7 +4,7 @@ export default function Home() {
   return (
     <div className="container">
     <h1>Our Features</h1>
-    <p>Transform Your Training Materials Fast and Flexible Course Creation</p>
+    <p>Transform Your Trainingggg Materials Fast and Flexible Course Creation</p>
     <div className="features">
       <div className="feature">
         <i className="fas fa-chalkboard-teacher"></i> 
