@@ -35,6 +35,7 @@ pipeline {
                 stage('Run Build') {
                     when { expression { fileExists('package.json') } }
                     steps {
+                        sh 'rm -rf .next'
                         sh 'npm run build || echo "Build failed"'
                     }
                 }
@@ -119,16 +120,18 @@ pipeline {
     //         }
     //     }
     stage('Start App') {
-            steps {
+             steps {
+                sh 'pkill -f "next start" || true' 
                 sh 'nohup npm start > app.log 2>&1 &'
                 sh 'sleep 5'
             }
         }
 
         stage('Expose via Ngrok') {
-            steps {
-                sh 'nohup ngrok http 3000 --domain=ac77-115-245-95-234.ngrok-free.app > /dev/null 2>&1 &'
-                sh 'sleep 10'
+             steps {
+                sh 'nohup ngrok http 3000 --domain=ac77-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &'
+                sh 'sleep 15'  
+                sh 'cat ngrok.log' 
             }
         }
     }
