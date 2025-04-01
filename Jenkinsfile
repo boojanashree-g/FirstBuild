@@ -30,7 +30,7 @@ pipeline {
                         echo "Installing dependencies in root"
                         sh '''
                         rm -rf node_modules package-lock.json
-                        npm ci > npm-install.log 2>&1 || cat npm-install.log
+                        npm ci --force --legacy-peer-deps > npm-install.log 2>&1 || cat npm-install.log
                         '''
                     } 
                     else if (fileExists("${projectDir}/package.json")) {
@@ -38,7 +38,7 @@ pipeline {
                         dir(projectDir) {
                             sh '''
                             rm -rf node_modules package-lock.json
-                            npm ci
+                            npm ci --force --legacy-peer-deps
                             '''
                         }
                     } else {
@@ -47,6 +47,7 @@ pipeline {
                 }
             }
         }
+
 
         stage('Run Tests') {
             when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
