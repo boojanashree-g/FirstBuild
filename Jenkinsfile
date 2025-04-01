@@ -4,9 +4,21 @@ pipeline {
     environment {
         NODEJS_HOME = tool 'NodeJS-18'
         PATH = "${NODEJS_HOME}/bin:${env.PATH}"
+        NODE_ENV = 'test'
     }
 
     stages {
+        stage('Debug Environment') {
+            steps {
+                script {
+                    echo 'Checking Node.js and npm versions...'
+                    sh 'node -v'
+                    sh 'npm -v'
+                    sh 'npm list --depth=0'
+                }
+            }
+        }
+
         stage('Install Dependencies') {
             steps {
                 script {
@@ -18,7 +30,7 @@ pipeline {
                         echo "Installing dependencies in root"
                         sh '''
                         rm -rf node_modules package-lock.json
-                        npm install > npm-install.log 2>&1 || cat npm-install.log
+                        npm ci > npm-install.log 2>&1 || cat npm-install.log
                         '''
                     } 
                     else if (fileExists("${projectDir}/package.json")) {
@@ -26,7 +38,7 @@ pipeline {
                         dir(projectDir) {
                             sh '''
                             rm -rf node_modules package-lock.json
-                            npm install
+                            npm ci
                             '''
                         }
                     } else {
@@ -42,10 +54,12 @@ pipeline {
                 script {
                     if (fileExists('my-app/package.json')) {
                         dir('my-app') { 
-                            sh 'npm test || echo "Tests failed"'
+                            sh 'chmod -R 777 node_modules'
+                            sh 'npm test -- --verbose || echo "Tests failed"'
                         }
                     } else {
-                        sh 'npm test || echo "Tests failed"'
+                        sh 'chmod -R 777 node_modules'
+                        sh 'npm test -- --verbose || echo "Tests failed"'
                     }
                 }
             }
@@ -66,7 +80,7 @@ pipeline {
             }
         }
 
-      stage('Deploy') {
+        stage('Deploy') {
             steps {
                 script {
                     echo 'Starting application on port 3000...'
@@ -80,12 +94,11 @@ pipeline {
                     sh '''
                     nohup ngrok http 3000 --region=in --hostname=ac77-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
                     sleep 5                   
-                    curl -Is https://ac77-115-245-95-234.ngrok-free.app || echo "Ngrok is not responnding"
+                    curl -Is https://ac77-115-245-95-234.ngrok-free.app || echo "Ngrok is not responding"
                     '''
                 }
             }
         }
-
     }
 
     post {
