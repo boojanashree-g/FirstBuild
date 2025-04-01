@@ -94,7 +94,7 @@ pipeline {
                     sh '''
                     nohup ngrok http 3000 --region=in --hostname=ac77-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
                     sleep 5                   
-                    curl -Is https://ac77-115-245-95-234.ngrok-free.app || echo "Ngrok is not responding"
+                    curl -Is https://ac77-115-245-95-234.ngrok-free.app || echo "Ngrok is not respoonding"
                     '''
                 }
             }
