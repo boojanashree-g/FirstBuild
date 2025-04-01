@@ -120,15 +120,14 @@ pipeline {
     //     }
     stage('Start App') {
                 steps {
-                    sh 'pm2 delete my-app || true'  // Remove old process if running
-                    sh 'pm2 start npm --name "my-app" -- start'  // Start the app with PM2
+                    sh 'npm start  || echo "App start failed"' 
                 }
             }
 
             stage('Expose via Ngrok') {
                 steps {
                     sh 'ngrok http 3000 --domain=ac77-115-245-95-234.ngrok-free.app &'
-                    sh 'sleep 5'  // Wait for ngrok to start
+                    sh 'sleep 5'  
                 }
             }
         }
