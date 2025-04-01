@@ -37,10 +37,10 @@ pipeline {
         // }
 
         stage('Run Tests') {
-            when { expression { return fileExists('my-app/package.json') || fileExists('package.json') } }
+            when { expression { return fileExists('package.json') || fileExists('package.json') } }
             steps {
                 script {
-                    if (fileExists('my-app/package.json')) {
+                    if (fileExists('package.json')) {
                         dir('my-app') { 
                             sh 'npm test || echo "Tests failed"'
                         }
