@@ -119,20 +119,19 @@ pipeline {
     //         }
     //     }
     stage('Start App') {
-                steps {
-                    sh 'npm start  || echo "App start failed"' 
-                }
-            }
-
-            stage('Expose via Ngrok') {
-                steps {
-                    sh 'ngrok http 3000 --domain=ac77-115-245-95-234.ngrok-free.app &'
-                    sh 'sleep 5'  
-                }
+            steps {
+                sh 'nohup npm start > app.log 2>&1 &'
+                sh 'sleep 5'
             }
         }
-    
 
+        stage('Expose via Ngrok') {
+            steps {
+                sh 'nohup ngrok http 3000 --domain=ac77-115-245-95-234.ngrok-free.app > /dev/null 2>&1 &'
+                sh 'sleep 10'
+            }
+        }
+    }
     post {
         success {
             echo 'Pipeline completed successfully!'
