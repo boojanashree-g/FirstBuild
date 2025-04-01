@@ -99,27 +99,40 @@ pipeline {
         //     }
         // }
 
-      stage('Deploy') {
-            steps {
-                script {
-                    echo 'Starting application on port 3000...'
-                    sh '''
-                    nohup npm run start > app.log 2>&1 &
-                    sleep 5
-                    curl -Is http://localhost:3000 || echo "App is not responding"
-                    '''
+    //   stage('Deploy') {
+    //         steps {
+    //             script {
+    //                 echo 'Starting application on port 3000...'
+    //                 sh '''
+    //                 nohup npm run start > app.log 2>&1 &
+    //                 sleep 5
+    //                 curl -Is http://localhost:3000 || echo "App is not responding"
+    //                 '''
 
-                    echo 'Starting ngrok for public access...'
-                    sh '''
-                    nohup ngrok http 3000 --region=in --hostname=ac77-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
-                    sleep 5                   
-                    curl -Is https://ac77-115-245-95-234.ngrok-free.app || echo "Ngrok is not responnding"
-                    '''
+    //                 echo 'Starting ngrok for public access...'
+    //                 sh '''
+    //                 nohup ngrok http 3000 --region=in --hostname=ac77-115-245-95-234.ngrok-free.app > ngrok.log 2>&1 &
+    //                 sleep 5                   
+    //                 curl -Is https://ac77-115-245-95-234.ngrok-free.app || echo "Ngrok is not responnding"
+    //                 '''
+    //             }
+    //         }
+    //     }
+    stage('Start App') {
+                steps {
+                    sh 'pm2 delete my-app || true'  // Remove old process if running
+                    sh 'pm2 start npm --name "my-app" -- start'  // Start the app with PM2
+                }
+            }
+
+            stage('Expose via Ngrok') {
+                steps {
+                    sh 'ngrok http 3000 --domain=ac77-115-245-95-234.ngrok-free.app &'
+                    sh 'sleep 5'  // Wait for ngrok to start
                 }
             }
         }
-
-    }
+    
 
     post {
         success {

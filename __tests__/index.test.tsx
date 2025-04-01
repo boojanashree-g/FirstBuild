@@ -30,5 +30,4 @@ describe("Home Component", () => {
       expect(screen.getByText(feature)).toBeInTheDocument();
     });
   });
-
 });
